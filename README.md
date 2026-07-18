@@ -1,44 +1,70 @@
-# Divine Comedy downloader
+# book-downloader
 
-A standalone Python tool that downloads Dante's full *Divine Comedy* —
-Inferno, Purgatorio and Paradiso — from
-[Digital Dante](https://digitaldante.columbia.edu/dante/divine-comedy/).
+Paste a link to a book on the web — get it back as a clean PDF.
 
-Digital Dante is protected by **Anubis**, a proof-of-work anti-bot wall, so an
-ordinary request only ever returns a "Making sure you're not a bot!" page. The
-script solves that challenge in pure Python (the same short SHA-256
-proof-of-work the browser would run), reuses the resulting cookie, then walks
-all 100 cantos. It reads the table of contents from the site's own navigation,
-so it stays correct even for odd URLs (e.g. Purgatorio 2's `purgatorio-2-2`
-slug).
+A small local web app: it scrapes the text from a book page (Project Gutenberg,
+Digital Dante, most static book sites), shows you what it found, then builds a
+typeset PDF — title page, chapter bookmarks, page numbers — and your browser
+asks where to save it.
 
-For each canto it saves clean, line-numbered text in three versions — the
-Italian original (Petrocchi edition) plus the **Mandelbaum** and **Longfellow**
-English translations.
-
-## Setup
+## Setup (one-time)
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## Usage
+## Run it
+```bash
+.venv/bin/python app.py
+```
+Then open **http://127.0.0.1:5060** (set `PORT=8000` etc. to change the port).
+
+1. Paste the book's link and hit **Scrape**.
+2. Watch the progress bar; when it's done you'll see the title, chapter list
+   and word count.
+3. Click **Yes, create PDF** — the browser's Save dialog pops up asking where
+   to put it. (Or download as plain `.txt` instead.)
+
+## How it works
+
+```
+app.py                    Flask server + background scrape jobs
+index.html                the browser UI
+core/
+  fetcher.py              polite HTTP session: throttling, retries, and an
+                          Anubis proof-of-work solver for sites behind that wall
+  book.py                 the neutral data model: Book -> Chapters -> text
+  pdf.py                  Book -> PDF (fpdf2: title page, bookmarks, page numbers)
+  textout.py              Book -> plain text
+  extractors/
+    base.py               adapter interface: matches / scrape
+    digital_dante.py      Digital Dante (the Divine Comedy, all 100 cantos)
+    generic.py            fallback for any static page: strips boilerplate,
+                          splits chapters at headings, trims Gutenberg license text
+```
+
+Every scraper produces a `Book`; every exporter consumes one. Supporting a new
+tricky site = one new file in `core/extractors/` implementing `matches()` and
+`scrape()`, added to the list in `extractors/__init__.py`. The generic
+extractor handles most static sites already; JavaScript-only sites, paywalls
+and logins are out of scope.
+
+## Standalone CLI: the Divine Comedy
+
+`divine_comedy.py` still works on its own — it downloads Dante's *Divine
+Comedy* from [Digital Dante](https://digitaldante.columbia.edu/dante/divine-comedy/)
+as line-numbered text files in three versions (Italian original, Mandelbaum,
+Longfellow):
+
 ```bash
 python3 divine_comedy.py                      # everything (all 3 versions)
 python3 divine_comedy.py --cantica inferno    # just the Inferno
 python3 divine_comedy.py --versions italian   # just the Italian original
-python3 divine_comedy.py --out ./books        # pick the output folder
-python3 divine_comedy.py --delay 2.0          # be extra polite between requests
-python3 divine_comedy.py --force              # re-fetch cantos already on disk
 ```
 
-Output lands in `divine-comedy/<version>/<cantica>/<cantica>-NN.txt`, with a
-combined `divine-comedy/<version>/<cantica>.txt` per cantica. Re-running skips
-cantos already on disk (pass `--force` to re-fetch).
-
 ## A note on copyright
-The `divine-comedy/` output folder is gitignored — the Mandelbaum and
-Longfellow translations remain under copyright, so nothing is redistributed
-here. Run the tool to generate your own copy for personal/scholarly use, keep
-the default polite delay between requests, and respect Digital Dante's terms.
+Downloads are generated on demand for personal/scholarly use and nothing is
+redistributed here (output folders are gitignored). Respect each site's terms,
+keep the polite default delay between requests, and mind that many translations
+are still under copyright even when the original work is public domain.

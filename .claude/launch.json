@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "book-downloader",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": [
+        "app.py"
+      ],
+      "port": 5060,
+      "autoPort": true
+    }
+  ]
+}

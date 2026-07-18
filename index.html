@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>book-downloader</title>
+<style>
+  :root {
+    --bg: #f6f4ef; --card: #ffffff; --ink: #2b2620; --muted: #8a8177;
+    --accent: #7a5c3e; --accent-ink: #fff; --line: #e5dfd4; --ok: #4a7c59; --err: #a4443c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #191613; --card: #221e19; --ink: #ece5da; --muted: #97907f;
+            --accent: #c9a276; --accent-ink: #241d13; --line: #37312a; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.55 Georgia, "Times New Roman", serif;
+    display: flex; justify-content: center; padding: 48px 16px;
+  }
+  main { width: 100%; max-width: 640px; }
+  h1 { font-size: 30px; margin: 0 0 4px; letter-spacing: -0.5px; }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px; margin-bottom: 18px; }
+  .row { display: flex; gap: 10px; }
+  input[type=url] {
+    flex: 1; padding: 12px 14px; font: inherit; color: var(--ink);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px; min-width: 0;
+  }
+  input[type=url]:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  button {
+    font: inherit; font-size: 15px; padding: 12px 20px; border: 0; border-radius: 8px;
+    background: var(--accent); color: var(--accent-ink); cursor: pointer;
+  }
+  button:hover { filter: brightness(1.08); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .hidden { display: none; }
+  .msg { color: var(--muted); font-size: 14px; margin-top: 12px; min-height: 20px; }
+  .msg.error { color: var(--err); }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 10px; }
+  .bar > div { height: 100%; width: 0%; background: var(--accent); transition: width 0.4s; }
+  .bookTitle { font-size: 22px; margin: 0 0 2px; }
+  .bookMeta { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+  .chapters {
+    max-height: 180px; overflow-y: auto; border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 14px; font-size: 14px; color: var(--muted); margin-bottom: 18px;
+  }
+  .chapters div { padding: 2px 0; }
+  .ask { font-size: 17px; margin: 0 0 12px; }
+  footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>book-downloader</h1>
+  <p class="sub">Paste a link to a book on the web &mdash; get it as a PDF.</p>
+
+  <div class="card">
+    <form class="row" id="scrapeForm">
+      <input type="url" id="url" placeholder="https://…" autocomplete="off" spellcheck="false">
+      <button type="submit" id="scrapeBtn">Scrape</button>
+    </form>
+    <div class="msg" id="msg"></div>
+    <div class="bar hidden" id="bar"><div id="barFill"></div></div>
+  </div>
+
+  <div class="card hidden" id="result">
+    <p class="bookTitle" id="bTitle"></p>
+    <p class="bookMeta" id="bMeta"></p>
+    <div class="chapters" id="bChapters"></div>
+    <p class="ask">Create a PDF of this book?</p>
+    <div class="row">
+      <button id="pdfBtn">Yes, create PDF</button>
+      <button class="ghost" id="txtBtn">Download as .txt instead</button>
+    </div>
+  </div>
+
+  <footer>Downloads are for personal use &mdash; respect each site's terms and copyright.</footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let jobId = null, poller = null;
+
+$("scrapeForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const url = $("url").value.trim();
+  if (!url) return;
+  $("scrapeBtn").disabled = true;
+  $("result").classList.add("hidden");
+  $("bar").classList.remove("hidden");
+  $("barFill").style.width = "0%";
+  setMsg("Starting…");
+  try {
+    const r = await fetch("/api/scrape", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({url}),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || "request failed");
+    jobId = data.job_id;
+    poller = setInterval(poll, 800);
+  } catch (err) {
+    fail(err.message);
+  }
+});
+
+async function poll() {
+  try {
+    const r = await fetch(`/api/job/${jobId}`);
+    if (!r.ok) throw new Error("job lost");
+    const j = await r.json();
+    if (j.status === "running") {
+      const pct = j.total ? Math.round(100 * j.done / j.total) : 0;
+      $("barFill").style.width = pct + "%";
+      setMsg(j.message + (j.total > 1 ? `  (${j.done}/${j.total})` : ""));
+    } else if (j.status === "done") {
+      stopPoll();
+      $("barFill").style.width = "100%";
+      setMsg(`Scraped with the ${j.extractor}.`);
+      showBook(j.book);
+    } else {
+      stopPoll();
+      fail(j.message);
+    }
+  } catch (err) {
+    stopPoll();
+    fail(err.message);
+  }
+}
+
+function showBook(b) {
+  $("bTitle").textContent = b.title;
+  $("bMeta").textContent =
+    (b.author ? b.author + " · " : "") +
+    `${b.chapter_count} chapter${b.chapter_count === 1 ? "" : "s"} · ` +
+    `${b.word_count.toLocaleString()} words`;
+  const list = $("bChapters");
+  list.innerHTML = "";
+  b.chapters.forEach(t => {
+    const d = document.createElement("div");
+    d.textContent = t;
+    list.appendChild(d);
+  });
+  $("result").classList.remove("hidden");
+  $("scrapeBtn").disabled = false;
+}
+
+$("pdfBtn").addEventListener("click", () => {
+  setMsg("Building the PDF — your browser will ask where to save it…");
+  window.location = `/api/pdf/${jobId}`;
+});
+$("txtBtn").addEventListener("click", () => {
+  window.location = `/api/txt/${jobId}`;
+});
+
+function setMsg(t) { const m = $("msg"); m.textContent = t; m.classList.remove("error"); }
+function fail(t) {
+  const m = $("msg"); m.textContent = t; m.classList.add("error");
+  $("bar").classList.add("hidden");
+  $("scrapeBtn").disabled = false;
+}
+function stopPoll() { clearInterval(poller); poller = null; }
+</script>
+</body>
+</html>
