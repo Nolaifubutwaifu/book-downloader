@@ -5,8 +5,9 @@ The generic extractor matches everything, so it must stay last.
 
 from .digital_dante import DigitalDanteExtractor
 from .generic import GenericExtractor
+from .mit_classics import MitClassicsExtractor
 
-EXTRACTORS = [DigitalDanteExtractor, GenericExtractor]
+EXTRACTORS = [DigitalDanteExtractor, MitClassicsExtractor, GenericExtractor]
 
 
 def pick_extractor(url):

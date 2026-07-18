@@ -40,6 +40,8 @@ core/
   extractors/
     base.py               adapter interface: matches / scrape
     digital_dante.py      Digital Dante (the Divine Comedy, all 100 cantos)
+    mit_classics.py       Internet Classics Archive (classics.mit.edu):
+                          Homer, Aristotle, Sophocles, ~440 classical works
     generic.py            fallback for any static page: strips boilerplate,
                           splits chapters at headings, trims Gutenberg license text
 ```
