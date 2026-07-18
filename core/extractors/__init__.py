@@ -3,11 +3,17 @@
 The generic extractor matches everything, so it must stay last.
 """
 
+from .archive_org import ArchiveOrgExtractor
 from .digital_dante import DigitalDanteExtractor
 from .generic import GenericExtractor
 from .mit_classics import MitClassicsExtractor
 
-EXTRACTORS = [DigitalDanteExtractor, MitClassicsExtractor, GenericExtractor]
+EXTRACTORS = [
+    DigitalDanteExtractor,
+    MitClassicsExtractor,
+    ArchiveOrgExtractor,
+    GenericExtractor,
+]
 
 
 def pick_extractor(url):

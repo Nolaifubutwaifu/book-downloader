@@ -42,6 +42,8 @@ core/
     digital_dante.py      Digital Dante (the Divine Comedy, all 100 cantos)
     mit_classics.py       Internet Classics Archive (classics.mit.edu):
                           Homer, Aristotle, Sophocles, ~440 classical works
+    archive_org.py        Internet Archive (archive.org): open/public-domain
+                          text items via the metadata API + djvu.txt full text
     generic.py            fallback for any static page: strips boilerplate,
                           splits chapters at headings, trims Gutenberg license text
 ```
