@@ -1,0 +1,24 @@
+# Secrets — NEVER commit these
+credentials.json
+token.json
+places_api_key.txt
+
+# Run output (auto-created)
+contacts.csv
+
+# Divine Comedy download output (regenerate with divine_comedy.py; the
+# translations remain under copyright, so we don't redistribute them here)
+divine-comedy/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# OS
+.DS_Store
