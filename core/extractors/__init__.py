@@ -7,11 +7,13 @@ from .archive_org import ArchiveOrgExtractor
 from .digital_dante import DigitalDanteExtractor
 from .generic import GenericExtractor
 from .mit_classics import MitClassicsExtractor
+from .wikibooks import WikibooksExtractor
 
 EXTRACTORS = [
     DigitalDanteExtractor,
     MitClassicsExtractor,
     ArchiveOrgExtractor,
+    WikibooksExtractor,
     GenericExtractor,
 ]
 

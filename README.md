@@ -44,6 +44,8 @@ core/
                           Homer, Aristotle, Sophocles, ~440 classical works
     archive_org.py        Internet Archive (archive.org): open/public-domain
                           text items via the metadata API + djvu.txt full text
+    wikibooks.py          Wikibooks (any language): reads a book's TOC, then
+                          each chapter subpage via the MediaWiki parse API
     generic.py            fallback for any static page: strips boilerplate,
                           splits chapters at headings, trims Gutenberg license text
 ```
@@ -53,6 +55,17 @@ tricky site = one new file in `core/extractors/` implementing `matches()` and
 `scrape()`, added to the list in `extractors/__init__.py`. The generic
 extractor handles most static sites already; JavaScript-only sites, paywalls
 and logins are out of scope.
+
+### Sites deliberately not supported
+- **Sites behind a Cloudflare "managed challenge"** (e.g. manybooks.net,
+  and currently loc.gov from automated clients): getting past that means
+  defeating bot-detection, which this tool won't do.
+- **Metadata aggregators** (Europeana, DPLA): they require a registered API
+  key and mostly link *out* to a hosting institution rather than serving the
+  text themselves — often to archive.org, which is already supported directly.
+- **Shadow libraries** (Anna's Archive, Library Genesis, Z-Library): these
+  distribute in-copyright books without permission. This tool is for
+  open/public-domain and openly-licensed text only.
 
 ## Standalone CLI: the Divine Comedy
 

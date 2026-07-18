@@ -31,6 +31,16 @@ CP1252_FIXUPS = str.maketrans({
     "–": "-", "—": "-", "…": "...", " ": " ",
 })
 
+# Symbols the bundled serif fonts (Georgia/Times) lack a glyph for, mapped to
+# ASCII so they render instead of silently dropping. Applied on every path,
+# since this is about the font, not the byte encoding.
+SYMBOL_FIXUPS = str.maketrans({
+    "\u2192": "->", "\u2190": "<-", "\u2191": "^", "\u2193": "v", "\u2194": "<->",
+    "\u21d2": "=>", "\u21d0": "<=", "\u2022": "-", "\u00b7": "-",
+    "\u00d7": "x", "\u00f7": "/", "\u2011": "-", "\u2012": "-", "\u2015": "-",
+    "\u2033": '"', "\u2032": "'",
+})
+
 
 class _BookPDF(FPDF):
     footer_font = "helvetica"
@@ -68,6 +78,7 @@ def build_pdf(book):
     pdf.footer_font = family
 
     def txt(s):
+        s = s.translate(SYMBOL_FIXUPS)
         if unicode_ok:
             return s
         s = s.translate(CP1252_FIXUPS)
