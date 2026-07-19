@@ -3,82 +3,274 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>book-downloader</title>
+<title>book-downloader · taiga</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  /* ── Taiga design tokens ──────────────────────────────────────
+     Source of truth: taigaprojects.space/taiga-tokens.css
+     Inlined here because app.py only serves "/". Keep in sync. */
   :root {
-    --bg: #f6f4ef; --card: #ffffff; --ink: #2b2620; --muted: #8a8177;
-    --accent: #7a5c3e; --accent-ink: #fff; --line: #e5dfd4; --ok: #4a7c59; --err: #a4443c;
+    --ink-950: #17120E; --ink-900: #221A12; --ink-800: #2E2418;
+    --ink-600: #5A4634; --ink-400: #9E8468; --ink-300: #C3AC92;
+    --ink-200: #DDCDB8; --ink-100: #ECE2D4; --ink-50: #F6F0E7;
+    --paper: #FBF7F0; --white: #FFFFFF;
+
+    --amber-700: #A8521F; --amber-600: #C8642B; --amber-500: #E07A3C;
+    --amber-300: #F4B582; --amber-100: #FBE4CF;
+    --moss-500: #6E8B3D; --rust-500: #C7472F;
+
+    --surface: var(--white); --surface-sunken: var(--ink-50);
+    --text-primary: var(--ink-900); --text-secondary: var(--ink-600);
+    --text-muted: var(--ink-400); --text-on-accent: var(--paper);
+    --border: var(--ink-200); --border-strong: var(--ink-300);
+    --border-inverse: rgba(246, 240, 231, 0.16);
+    --accent: var(--amber-500); --accent-hover: var(--amber-600);
+    --accent-press: var(--amber-700); --accent-soft: var(--amber-100);
+    --focus-ring: rgba(224, 122, 60, 0.45);
+
+    --font-display: 'Libre Caslon Display', Georgia, serif;
+    --font-sans: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+    --text-2xs: 0.75rem; --text-xs: 0.833rem; --text-sm: 0.9375rem;
+    --text-md: 1rem; --text-lg: 1.25rem; --text-xl: 1.563rem;
+    --text-3xl: 2.441rem; --text-4xl: 3.052rem;
+
+    --radius-sm: 4px; --radius-lg: 12px; --radius-full: 999px;
+    --shadow-sm: 0 2px 6px rgba(34, 26, 18, 0.08);
+    --shadow-accent: 0 10px 28px rgba(200, 100, 43, 0.28);
+    --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+    --dur-fast: 140ms; --dur-base: 220ms;
+    --gutter: 64px;
   }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #191613; --card: #221e19; --ink: #ece5da; --muted: #97907f;
-            --accent: #c9a276; --accent-ink: #241d13; --line: #37312a; }
-  }
+  @media (max-width: 720px) { :root { --gutter: 24px; } }
+
   * { box-sizing: border-box; }
+
   body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font: 16px/1.55 Georgia, "Times New Roman", serif;
-    display: flex; justify-content: center; padding: 48px 16px;
+    margin: 0;
+    background: var(--paper);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--text-md);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
   }
-  main { width: 100%; max-width: 640px; }
-  h1 { font-size: 30px; margin: 0 0 4px; letter-spacing: -0.5px; }
-  .sub { color: var(--muted); margin: 0 0 28px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px; margin-bottom: 18px; }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  ::selection { background: var(--amber-100); color: var(--ink-900); }
+  :focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+
+  /* ── shared chrome ────────────────────────────────────────── */
+  .taiga-header {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px; padding: 0 var(--gutter);
+    background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  .taiga-brand { display: flex; align-items: baseline; gap: 14px; }
+  .taiga-brand .wordmark {
+    font-family: var(--font-display); font-size: var(--text-xl);
+    letter-spacing: -0.02em; color: var(--ink-900); text-decoration: none;
+  }
+  .taiga-brand .rule {
+    width: 1px; height: 20px; background: var(--border-strong); align-self: center;
+  }
+  .taiga-brand .crumb {
+    font-family: var(--font-mono); font-size: var(--text-sm); color: var(--text-secondary);
+  }
+  .taiga-nav .back {
+    font-family: var(--font-mono); font-size: var(--text-xs);
+    color: var(--text-secondary); text-decoration: none;
+    transition: color var(--dur-base) var(--ease-out);
+  }
+  .taiga-nav .back:hover { color: var(--amber-700); }
+
+  .taiga-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px; padding: 26px var(--gutter);
+    background: var(--ink-950); margin-top: auto;
+  }
+  .taiga-footer .made {
+    font-family: var(--font-display); font-size: var(--text-lg);
+    color: var(--ink-100); letter-spacing: -0.02em;
+  }
+  .taiga-footer .home {
+    font-family: var(--font-mono); font-size: var(--text-xs);
+    color: var(--amber-300); text-decoration: none;
+  }
+  .taiga-footer .home:hover { color: var(--amber-100); }
+
+  /* ── page ─────────────────────────────────────────────────── */
+  main {
+    width: 100%; max-width: 640px;
+    margin: 0 auto; padding: 72px var(--gutter) 80px;
+    text-align: center;
+  }
+  h1.title { font-size: var(--text-4xl); margin-bottom: 12px; }
+  .sub { color: var(--text-secondary); margin: 0 0 36px; }
+
   .row { display: flex; gap: 10px; }
+
   input[type=url] {
-    flex: 1; padding: 12px 14px; font: inherit; color: var(--ink);
-    background: var(--bg); border: 1px solid var(--line); border-radius: 8px; min-width: 0;
+    flex: 1; min-width: 0;
+    font-family: var(--font-mono); font-size: var(--text-sm);
+    color: var(--ink-800); background: var(--surface);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    padding: 13px 16px; outline: none;
+    transition: border-color var(--dur-base) var(--ease-out);
   }
-  input[type=url]:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  input[type=url]::placeholder { color: var(--text-muted); }
+  input[type=url]:focus { border-color: var(--accent); }
+
   button {
-    font: inherit; font-size: 15px; padding: 12px 20px; border: 0; border-radius: 8px;
-    background: var(--accent); color: var(--accent-ink); cursor: pointer;
+    font-family: var(--font-sans); font-weight: 700; font-size: var(--text-sm);
+    color: var(--text-on-accent); background: var(--accent);
+    border: 1px solid var(--accent); border-radius: var(--radius-sm);
+    padding: 13px 24px; cursor: pointer; white-space: nowrap;
+    box-shadow: var(--shadow-accent);
+    transition: background var(--dur-base) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out);
   }
-  button:hover { filter: brightness(1.08); }
-  button:disabled { opacity: 0.5; cursor: default; }
-  button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  button:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  button:active { transform: translateY(1px); background: var(--accent-press); }
+  button:disabled { opacity: 0.45; cursor: default; box-shadow: none; transform: none; }
+
+  /* "Download as .txt instead" reads as a quiet link, per the reference. */
+  button.ghost {
+    background: none; border: none; box-shadow: none; padding: 0;
+    font-family: var(--font-mono); font-weight: 400; font-size: var(--text-xs);
+    color: var(--amber-600); text-align: left;
+  }
+  button.ghost:hover {
+    background: none; color: var(--amber-700);
+    text-decoration: underline; text-underline-offset: 2px;
+  }
+  button.ghost:active { transform: none; background: none; }
+
   .hidden { display: none; }
-  .msg { color: var(--muted); font-size: 14px; margin-top: 12px; min-height: 20px; }
-  .msg.error { color: var(--err); }
-  .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 10px; }
-  .bar > div { height: 100%; width: 0%; background: var(--accent); transition: width 0.4s; }
-  .bookTitle { font-size: 22px; margin: 0 0 2px; }
-  .bookMeta { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
-  .chapters {
-    max-height: 180px; overflow-y: auto; border: 1px solid var(--line);
-    border-radius: 8px; padding: 10px 14px; font-size: 14px; color: var(--muted); margin-bottom: 18px;
+
+  .msg {
+    color: var(--text-secondary); font-size: var(--text-xs);
+    margin-top: 14px; min-height: 20px; text-align: left;
+    font-family: var(--font-mono);
   }
-  .chapters div { padding: 2px 0; }
-  .ask { font-size: 17px; margin: 0 0 12px; }
-  footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 24px; }
+  .msg.error { color: var(--rust-500); }
+
+  .bar {
+    height: 4px; background: var(--ink-100);
+    border-radius: var(--radius-full); overflow: hidden; margin-top: 12px;
+  }
+  .bar > div {
+    height: 100%; width: 0%; background: var(--accent);
+    transition: width var(--dur-base) var(--ease-out);
+  }
+
+  /* ── result card ──────────────────────────────────────────── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+    padding: 28px; margin-top: 24px; text-align: left;
+  }
+
+  .bookTitle {
+    font-family: var(--font-display); font-size: var(--text-xl);
+    color: var(--ink-900); letter-spacing: -0.02em; margin: 0 0 4px;
+  }
+  .bookMeta {
+    font-family: var(--font-mono); font-size: var(--text-xs);
+    color: var(--text-muted); margin: 0 0 18px;
+  }
+  .chapters {
+    max-height: 180px; overflow-y: auto;
+    background: var(--surface-sunken); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 16px;
+    font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: 24px;
+  }
+  .chapters div { padding: 3px 0; }
+
+  .askRow {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 20px; flex-wrap: wrap;
+  }
+  .ask {
+    font-family: var(--font-display); font-size: var(--text-xl);
+    color: var(--ink-900); letter-spacing: -0.02em; margin: 0 0 4px;
+  }
+
+  .disclaimer {
+    font-size: var(--text-xs); color: var(--text-muted); margin: 22px 0 0;
+  }
+
+  @media (max-width: 720px) {
+    main { padding: 44px var(--gutter) 56px; }
+    h1.title { font-size: var(--text-3xl); }
+    .row { flex-direction: column; }
+    .askRow { flex-direction: column; align-items: stretch; }
+    .askRow button { width: 100%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 1ms !important; }
+  }
 </style>
 </head>
 <body>
+
+<header class="taiga-header">
+  <div class="taiga-brand">
+    <a class="wordmark" href="https://www.taigaprojects.space">taiga</a>
+    <span class="rule"></span>
+    <span class="crumb">/ book-downloader</span>
+  </div>
+  <nav class="taiga-nav">
+    <a class="back" href="https://www.taigaprojects.space">← all projects</a>
+  </nav>
+</header>
+
 <main>
-  <h1>book-downloader</h1>
+  <h1 class="title">book-downloader</h1>
   <p class="sub">Paste a link to a book on the web &mdash; get it as a PDF.</p>
 
-  <div class="card">
-    <form class="row" id="scrapeForm">
-      <input type="url" id="url" placeholder="https://…" autocomplete="off" spellcheck="false">
-      <button type="submit" id="scrapeBtn">Scrape</button>
-    </form>
-    <div class="msg" id="msg"></div>
-    <div class="bar hidden" id="bar"><div id="barFill"></div></div>
-  </div>
+  <form class="row" id="scrapeForm">
+    <input type="url" id="url" placeholder="https://standardebooks.org/ebooks/…" autocomplete="off" spellcheck="false">
+    <button type="submit" id="scrapeBtn">Scrape</button>
+  </form>
+  <div class="msg" id="msg"></div>
+  <div class="bar hidden" id="bar"><div id="barFill"></div></div>
 
   <div class="card hidden" id="result">
     <p class="bookTitle" id="bTitle"></p>
     <p class="bookMeta" id="bMeta"></p>
     <div class="chapters" id="bChapters"></div>
-    <p class="ask">Create a PDF of this book?</p>
-    <div class="row">
+    <div class="askRow">
+      <div>
+        <p class="ask">Create a PDF of this book?</p>
+        <button class="ghost" id="txtBtn">Download as .txt instead</button>
+      </div>
       <button id="pdfBtn">Yes, create PDF</button>
-      <button class="ghost" id="txtBtn">Download as .txt instead</button>
     </div>
   </div>
 
-  <footer>Downloads are for personal use &mdash; respect each site's terms and copyright.</footer>
+  <p class="disclaimer">Downloads are for personal use &mdash; respect each site's terms and copyright.</p>
 </main>
+
+<footer class="taiga-footer">
+  <span class="made">Built and maintained by hand.</span>
+  <a class="home" href="https://www.taigaprojects.space">taigaprojects.space</a>
+</footer>
 
 <script>
 const $ = id => document.getElementById(id);
